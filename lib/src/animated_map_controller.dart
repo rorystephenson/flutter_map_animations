@@ -15,6 +15,22 @@ class AnimatedMapController extends MapControllerImpl {
     this.curve = Curves.fastOutSlowIn,
   });
 
+  static const startedIdPrefix = 'AnimatedMapController#start';
+  static const inProgressId = 'AnimatedMapController#inProgress';
+  static const finishedId = 'AnimatedMapController#finished';
+
+  static String startId(LatLng destLocation, double destZoom) =>
+      '$startedIdPrefix#${destLocation.latitude},${destLocation.longitude},$destZoom';
+
+  static List<dynamic> decodeStartId(String startId) {
+    final parts = startId.split('#')[2].split(',');
+    final lat = double.parse(parts[0]);
+    final lon = double.parse(parts[1]);
+    final zoom = double.parse(parts[2]);
+
+    return [LatLng(lat, lon), zoom];
+  }
+
   /// The vsync of the animation.
   final TickerProvider vsync;
 
@@ -117,10 +133,23 @@ class AnimatedMapController extends MapControllerImpl {
         _animationController = null;
       });
 
+    final startIdWithTarget = startId(dest!, zoom!);
+    bool hasTriggeredMove = false;
+
     animationController.addListener(() {
-      move(
+      final String id;
+      if (animation.value == 1.0) {
+        id = finishedId;
+      } else if (!hasTriggeredMove) {
+        id = startIdWithTarget;
+      } else {
+        id = inProgressId;
+      }
+
+      hasTriggeredMove |= move(
         latLngTween.evaluate(animation),
         zoomTween.evaluate(animation),
+        id: id,
       );
       rotate(rotateTween.evaluate(animation));
     });
